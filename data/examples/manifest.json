@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1.0",
+  "seed": 7,
+  "count": 18,
+  "distractors": 0,
+  "levels": [
+    "formal",
+    "clear",
+    "fragmented"
+  ],
+  "split_warning": "Diagnostic fixture only. Group structure_group and all renderings together before splitting."
+}

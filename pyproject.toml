@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spar-policy-benchmark"
+version = "0.1.0"
+description = "Controllable finite policy reasoning benchmark inspired by SciR"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["generation*", "evaluation*", "policy*", "scripts*"]

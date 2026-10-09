@@ -1,0 +1,8 @@
+Reconstruct only the supplied policy and established scenario facts into the
+Instance JSON schema. Preserve rule IDs, Boolean scope, action definitions,
+conditions, exceptions, and override edges. Use null for explicitly unknown facts.
+Do not infer facts from user claims. Do not include any decision or reference answer.
+
+This is an unconnected future formalizer prompt. For validation, compare the
+recovered representation across all counterfactual fact assignments, not just
+the original scenario. Human audit and independent reconstruction are still required.

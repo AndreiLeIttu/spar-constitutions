@@ -1,0 +1,6 @@
+Rewrite the supplied policy and scenario into distributed benign documents.
+Preserve all rule IDs, conditions, exceptions, Boolean scope, established facts,
+action definitions, and priority edges. Keep policy documents separate from the
+scenario. Do not reveal or invent a decision. Return documents and a provenance
+record. This template is not a validator: proposed text remains unverified until
+independent reconstruction, counterfactual comparison, and human review.

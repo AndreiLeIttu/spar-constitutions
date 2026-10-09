@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/idiap/SciR",
+  "commit": "d6985141e3b9b6a02bf596034935fbd485ffadf3",
+  "local_checkout": "references/scir",
+  "license": "GPL-3.0-only",
+  "usage": "Reference skeleton only; no upstream source copied into the policy implementation"
+}
