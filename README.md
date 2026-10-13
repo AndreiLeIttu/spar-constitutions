@@ -1,24 +1,77 @@
 # SPAR policy reasoning benchmark
 
 A small offline prototype inspired by SciR's generation → rendering → evaluation
-pipeline. `research-context.md` was used as the current research direction; both
-handoff documents remain local and are ignored by Git.
+pipeline.
 
-## Run on Windows
+## Running on Windows
 
-Python 3.11+ and Git suffice. There are no runtime dependencies or API calls.
+For a one-case end-to-end paid demo, run `python -m scripts.run_demo --execute`
+in your own terminal. Defaults are GPT-6.1 Sol, low reasoning, automatic context,
+one scenario-generation call and three answer calls. The key is entered once without
+echo. Outputs include readable `formal.preview.json`, `dataset/preview.json`, and
+`walkthrough.md`, plus raw responses and scores under `data/runs/paid-demo`.
+Without `--execute`, this command previews the plan and makes no calls.
+Choose a fresh `--output` directory for repeat runs. A one-case result is a smoke
+test; generated grounding and prose still need review before research conclusions.
+
+Formal generation also writes a `.preview.json` companion beside its JSONL output.
+Dataset generation automatically writes a formatted `preview.json` containing all
+completed private records. These previews include hidden answers and are researcher
+artifacts, not respondent inputs.
+
+Python 3.11+ and Git suffice. There are no third-party runtime dependencies.
 Run from the project root:
 
 ```powershell
 python -m unittest discover -s tests -v
-python -m scripts.build_dataset --seed 7 --count 18 --output data/examples
+python -m generation.formal --representation propositional --count 5 --facts 3 --actions 2 --rules 4 --priority-edges 1 --output data/runs/formal.jsonl
+python -m scripts.build_dataset --source data/runs/formal.jsonl --model MODEL_ID --count 1
 ```
 
-This creates 18 formal instances and 54 prompts across formal, clear, and fragmented
-presentations. The nine families repeat twice: these are diagnostic fixtures, not
-an independent research evaluation set. `--distractors 2` adds rules separately
-from the rendering choice, but may change applicability/outcomes; gold is always
-recomputed. These controls are a starting point, not a validated difficulty scale.
+The formal generator runs offline and writes new formal objects plus solver results.
+The build_dataset command previews a scenario-generation prompt without calling a model. Replace
+MODEL_ID with an OpenRouter model and add `--execute` in your own terminal to generate
+one scenario. The key is entered without echo. Outputs go to a new directory under
+`data/runs/generated-scenarios`; use `--output` to choose another directory.
+
+The generator reads `prompts/policy/scenario.txt`. Edit that file to change its
+instructions, or pass `--prompt PATH`. `--context` and `--presentation` fill its
+placeholders. Input is JSONL containing formal `Instance` objects (or existing private
+dataset records). The solver recomputes gold before each model-written scenario.
+With `--context auto` (the default), the model chooses a concrete context and assigns
+meanings to all predicate and action IDs in the same call that writes the scenario.
+Use `--context "customer support"` to request a particular setting; `--setting` is
+retained as an alias. No fixed context list applies. Definitions are frozen after
+grounding and reused across formal, canonical clear, and scenario prompts.
+Private records preserve the original `source_formal` and the grounded `formal`
+object; `generation.candidate` contains the chosen context, mappings, and prose.
+Code retains all facts, rules and priorities rather than asking the model to rewrite
+them. Mapping validation and unchanged solver results do not prove that the prose
+or concrete meanings introduce no hidden implications.
+Generated prose remains explicitly **unverified**; JSON validation is not semantic
+validation. No reconstruction or human audit is performed automatically.
+
+`generation/formal.py` randomly samples Boolean formula trees, rule conditions,
+exceptions, fact states and acyclic priorities, rather than cycling through handcrafted
+cases. Choose `--condition-depth`, `--requirement-depth`, `--exception-rate`,
+`--unknown-rate`, `--priority-edges` and `--seed` to control it. Formula depth bounds
+AND/OR nesting, with literals at depth zero. Counts and priority edges are exact;
+depths are maxima and rates are probabilities, not guaranteed frequencies. Outcomes
+are measured by the solver, not preselected or balanced. Reusing a seed/configuration
+reproduces formal objects; model-written prose need not be reproducible.
+
+`--representation` currently supports **propositional** only. Objects use JSON as
+serialization, with named Boolean requirements and explicit priority edges under
+the recorded SPAR semantics; this is not plain classical implication or an implementation
+of a standard defeasible calculus. A first-order backend would need domains, predicates,
+quantifiers and a corresponding solver. It is not silently emulated by renaming atoms.
+The initial definitions are abstract (`condition p1 holds`, `perform action a1`);
+scenario generation now replaces them with concrete meanings and freezes those
+meanings before creating text variants.
+
+The nine handcrafted patterns have been removed from the generator. Existing
+`data/examples/` files are retained as historical solver test fixtures and can supply
+formal inputs for trying the new renderer. They are not a new independent benchmark.
 
 Only send `prompts.jsonl` to respondents. `private.jsonl` contains formal sources,
 hidden reference results, traces, certificates, rendering validation and provenance.
@@ -37,60 +90,26 @@ python -m evaluation.runner --dataset data/examples/private.jsonl --responses re
 
 Scoring checks status, action admissibility, and certificate separately, with joint
 accuracy and invalid-format rate. Missing responses count as failures against the
-full expected prompt set. Unknown/duplicate keys are rejected. Model/provider adapters
-and paid evaluations are intentionally pending configuration. Do not describe the
+full expected prompt set. Unknown/duplicate keys are rejected. An optional
+[user-run OpenRouter smoke test](docs/openrouter.md) supports small direct-answer
+experiments; model choice and paid execution remain user controlled. Do not describe the
 gold solver self-check as evidence of model performance.
 
-## Architecture for someone new to SciR
 
-SciR has three scientific tracks. Each creates a formal problem, translates it
-into text, optionally obfuscates its chunks with an LLM and inverse reconstruction,
-then evaluates model answers. Its scientific solvers are track-specific. Here the
-same stages serve a new policy task; SciR is a reference checkout, not a runtime dependency.
-
-```text
-generation/policy/generate.py → formal Instance
-                                  ↓
-policy/solver.py              → hidden answer + rule trace + conflict certificates
-                                  ↓
-generation/policy/transform.py → formal / clear / fragmented prompts
-                                  ↓
-external respondent          → saved response JSONL
-                                  ↓
-evaluation/runner.py         → strict parsing + separate scores
-```
-
-| SciR component | This setup | Purpose |
-| --- | --- | --- |
-| `generation/<track>/generate.py` | `generation/policy/generate.py` | Seeded formal instances |
-| Track-specific solvers | `policy/solver.py` | Exact finite action enumeration |
-| `generation/<track>/transform.py` | `generation/policy/transform.py` | Text variants from the same source |
-| `generation/api.py` | Pending provider adapter | Future LLM generation/perturbation |
-| `prompts/obfuscation_styles/` | `prompts/policy/` | Future perturbation/reconstruction prompts |
-| `evaluation/extraction.py`, runner | Same directory pattern | Parse and score saved responses |
-
-`policy/schema.py` defines and validates the JSON representation. `policy/fidelity.py`
-compares a recovered formalization with gold over **every Boolean fact assignment**
-in the declared vocabulary and returns a counterexample on disagreement. It requires
-aligned action/predicate definitions and checks status and admissible actions, not
-structural recovery or prose meaning. Original scenario fact extraction must also
-be assessed separately. No formalizer is connected yet.
-
-See [the semantics specification](docs/semantics.md) for the prototype's explicit
-choices and [reference provenance](docs/provenance.md) for the pinned SciR checkout.
 
 ## Current limits and next milestone
 
-The generator is a small set of patterns, not broad parametric sampling. It supports
+Formal cases can be sampled offline or supplied as JSONL. The schema supports
 conditional mandatory Boolean requirements, exceptions, pairwise explicit defeat,
 higher-order conflicts, and unknown facts. It does not yet support permission
 modalities, derived-fact inference chains, temporal rules, or real constitutions.
 
-Clear and fragmented text uses deterministic templates, with explicit parentheses
-and negation. Fragmentation changes order and document grouping; it is not yet
-natural paraphrase/roleplay. Validation records say `by_construction`, with independent
-reconstruction and human audits `not_performed`. Future LLM output must remain
-unverified until reviewed; a round trip is evidence, not a guarantee.
+`generation/generate.py` reads the scenario prompt, calls a supplied model callback,
+and records prompt/model provenance. `generation/render.py` supplies the deterministic
+formal and clear baselines and shared task instructions. The legacy fragmented renderer
+is available for old fixtures. `reconstruct.txt` and `perturb.txt` are still future
+interfaces; they are not called by the generator. A round trip is evidence of fidelity,
+not a guarantee.
 
 Before a research pilot: add independently sampled structures and measured complexity
 controls, configure direct/decomposition/formalization baselines, validate renderings,

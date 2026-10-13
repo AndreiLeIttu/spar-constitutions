@@ -3,8 +3,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from generation.policy.generate import generate
-from generation.policy.transform import render
+from generation.generate import load_instances
+from generation.render import render
 from policy.schema import Instance, Rule
 from policy.solver import solve, verify_certificate
 from policy.fidelity import compare
@@ -15,7 +15,8 @@ from evaluation.extraction import parse_answer
 
 class BenchmarkTests(unittest.TestCase):
     def setUp(self):
-        self.cases = {x.metadata["family"]: x for x in generate(count=9)}
+        # Historical fixtures test semantics; production no longer generates these families.
+        self.cases = {x.metadata["family"]: x for x in load_instances("data/examples/private.jsonl", 9)}
 
     def test_priority_reversal(self):
         for family, expected in [("priority", True), ("priority_reversed", False)]:
@@ -99,12 +100,18 @@ class BenchmarkTests(unittest.TestCase):
     def test_reproducibility_and_answer_separation(self):
         # Keep test scratch files inside the writable project on Windows sandboxes.
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as a, tempfile.TemporaryDirectory(dir=Path.cwd()) as b:
-            build(a, 7, 9, 1)
-            build(b, 7, 9, 1)
+            instance = self.cases["consistent"]
+            def completion(prompt):
+                return {"text": json.dumps({"policy_documents": [{"title": "Policy", "text": "r1: Approved transfers must be sent."}],
+                    "scenario": "The transfer is approved.", "action_definitions": instance.actions,
+                    "context": "Archive office", "predicate_definitions": instance.definitions}), "model_requested": "mock"}
+            a, b = Path(a) / "dataset", Path(b) / "dataset"
+            build(a, [instance], completion, "archive office", "clear")
+            build(b, [instance], completion, "archive office", "clear")
             for filename in ("private.jsonl", "prompts.jsonl", "manifest.json"):
                 self.assertEqual((Path(a) / filename).read_bytes(), (Path(b) / filename).read_bytes())
             public = [json.loads(x) for x in (Path(a) / "prompts.jsonl").read_text().splitlines()]
-            self.assertEqual(len(public), 27)
+            self.assertEqual(len(public), 3)
             self.assertTrue(all(set(x) == {"id", "level", "prompt"} for x in public))
             self.assertTrue(all('"reference"' not in x["prompt"] and '"family"' not in x["prompt"] for x in public))
         with self.assertRaises(ValueError):

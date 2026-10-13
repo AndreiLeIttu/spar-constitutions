@@ -1,0 +1,57 @@
+Ground this formal policy in a concrete context and write an impersonal case:
+{formal_object}
+
+Requested context: {setting}
+Presentation: {presentation}
+
+If the requested context is auto, choose a realistic setting that fits the entire
+rule structure. No predefined domain list applies. Otherwise use the requested
+context. Everyday institutional, interpersonal, commercial or fictional contexts
+are allowed. Do not rely on external laws or unprovided policies to decide the case.
+
+In this SAME response, assign concrete meanings to every fact proposition and action,
+then use those meanings to write the governing policy and the scenario. This schema
+is propositional: predicate_definitions maps complete Boolean statements, not quantified
+first-order predicates. Replace generic descriptions such as "condition p1 holds"
+and "perform action a1" with precise statements such as "the applicant has submitted
+identity verification" and "issue the access badge". Keep symbol IDs unchanged.
+If metadata.grounding is present, definitions were already frozen: copy the supplied
+definitions and actions exactly and write another presentation using those meanings.
+
+Preserve all rules, rule IDs, conditions, requirements, exceptions, priority edges,
+Boolean grouping and fact truth values. These fields are not yours to edit. False
+facts mean the grounded statement is false; null means it is not established either
+way. Do not infer unknown facts or turn established facts into someone's claims.
+Express facts and rule contents in concrete prose, rather than merely saying "p1
+is true". Keep policy documents separate from the impersonal scenario.
+
+Choose distinct positive atomic statements for each predicate and distinct actions.
+Their truth values must be independently possible: do not make two predicates
+complements, or introduce hidden implications. Actions must be independently
+performable or withholdable: do not ground two IDs as "send" and "withhold the
+same item", since each action already has its own false/withheld alternative.
+No new actors' authority, prerequisites, alternatives, clarification, partial
+assistance or unstated exceptions may alter the action space or requirements.
+
+The policy may contain genuinely incompatible requirements. Preserve these even
+if the resulting policy is imperfect. Do not repair contradictions or invent a
+tradeoff. If faithful grounding in the requested context is impossible, return
+{"error": "brief reason"} instead of silently changing the policy.
+
+Write a natural third-person situation with enough concrete detail to establish
+the supplied facts. Incidental details must not add relevant constraints. Retain
+rule IDs for auditability. Do not state the correct action, conflict status,
+controlling rules or any solution.
+
+Return one JSON object only, without Markdown fences:
+{
+  "context": "chosen concrete context",
+  "predicate_definitions": {"original_fact_id": "concrete Boolean statement"},
+  "action_definitions": {"original_action_id": "concrete action"},
+  "policy_documents": [{"title": "...", "text": "..."}],
+  "scenario": "..."
+}
+Include exactly all original fact IDs and action IDs in their respective mappings.
+Use the mappings consistently in the documents and scenario. A structurally valid
+response remains unverified: independent semantic reconstruction and human review
+are separate steps, not claims you can make here.
